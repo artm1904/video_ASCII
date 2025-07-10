@@ -4,10 +4,11 @@
 #include <string>
 #include <thread>
 
-std::string pixelToAscii(int pixelValue) {
-  const std::string ASCII_CHARS = "@%#*+=-:. ";
-  std::string s{(ASCII_CHARS[pixelValue * (ASCII_CHARS.length() - 1) / 255])};
-  return s;
+constexpr char pixelToAscii(int pixelValue) {
+  // const std::string ASCII_CHARS = "@%#*+=-:. ";
+  const std::string_view ASCII_CHARS = " .:-=+*#%@";
+  const int index = pixelValue * (ASCII_CHARS.length() - 1) / 255;
+  return ASCII_CHARS[index];
 }
 
 int main(int argc, char **argv) {
@@ -30,13 +31,19 @@ int main(int argc, char **argv) {
 
   //   std::cout << "Video FPS: " << fps << std::endl;
   //   std::cout << "Video Frame Count: " << frame_count << std::endl;
-    // int width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-    // int height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+  // int width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+  // int height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
 
   int frameDurationMS = 1000 / fps;
 
   int width = 150;
-  int height = 50;
+
+  int frameWidth = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+  int frameHeight = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+
+  const float aspectRatioCorrection = 0.52f;
+  int height = static_cast<int>(static_cast<float>(width * frameHeight) / frameWidth *
+                                aspectRatioCorrection);
 
   cv::Mat frame, grayFrame, resizedFrame;
 
@@ -52,6 +59,9 @@ int main(int argc, char **argv) {
     cv::resize(grayFrame, resizedFrame, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
 
     std::string asciiFrame;
+
+    // reserv memory to avoid continiues alocations
+    asciiFrame.reserve(height * (width + 1));
     for (int i = 0; i < height; i++) {
       for (int j = 0; j < width; j++) {
         asciiFrame += pixelToAscii(resizedFrame.at<uchar>(i, j));
@@ -59,7 +69,8 @@ int main(int argc, char **argv) {
       asciiFrame += "\n";
     }
 
-    std::system("clear");
+    // Use ANSI escape-code for clear screen
+    std::cout << "\033[2J\033[1;1H";
     std::cout << asciiFrame << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(frameDurationMS));
   }
